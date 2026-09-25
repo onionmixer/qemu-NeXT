@@ -53,7 +53,7 @@
 /* debug Floppy devices */
 
 #define DEBUG_FLOPPY 0
-#define FD_RESET_POLL_WINDOW_NS (250 * SCALE_US)
+#define FD_RESET_POLL_WINDOW_NS (250 * SCALE_MS)
 
 #define FLOPPY_DPRINTF(fmt, ...)                                \
     do {                                                        \
@@ -2200,7 +2200,7 @@ static void fdctrl_handle_configure(FDCtrl *fdctrl, int direction)
     fdctrl->config = fdctrl->fifo[2];
     fdctrl->precomp_trk =  fdctrl->fifo[3];
     /*
-     * An 82077 CONFIGURE with DPOLL issued within 250 us of reset suppresses
+     * An 82077 CONFIGURE with DPOLL issued within 250 ms of reset suppresses
      * drive polling and its four pending SENSE INTERRUPT STATUS results.
      */
     if ((fdctrl->config & FD_CONFIG_DPOLL) &&
