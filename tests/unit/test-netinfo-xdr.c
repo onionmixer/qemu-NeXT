@@ -89,6 +89,41 @@ static void test_bind_arguments_golden(void)
     g_assert_cmpmem(encoded, sizeof(encoded), expected, sizeof(expected));
 }
 
+static void test_bind_arguments_openstep_trailing_word(void)
+{
+    static const uint8_t legacy[] = {
+        0x0a, 0, 2, 15,
+        0, 0, 0, 5, 'l', 'o', 'c', 'a', 'l', 0, 0, 0,
+        0, 0, 0, 7, 'n', 'e', 't', 'w', 'o', 'r', 'k', 0,
+        0, 0, 0, 0,
+    };
+    uint8_t malformed[sizeof(legacy) + 4];
+    OncRpcXdrReader reader;
+    NiBindArgs args;
+
+    ni_bind_args_init(&args);
+    onc_rpc_xdr_reader_init(&reader, legacy, sizeof(legacy));
+    g_assert_true(ni_xdr_decode_bind_args(&reader, &args));
+    g_assert_cmpuint(args.client_addr, ==, 0x0a00020f);
+    g_assert_cmpstr(args.client_tag, ==, "local");
+    g_assert_cmpstr(args.server_tag, ==, "network");
+    g_assert_true(onc_rpc_xdr_reader_empty(&reader));
+    ni_bind_args_clear(&args);
+
+    memcpy(malformed, legacy, sizeof(legacy));
+    malformed[sizeof(legacy) - 1] = 1;
+    onc_rpc_xdr_reader_init(&reader, malformed, sizeof(legacy));
+    g_assert_false(ni_xdr_decode_bind_args(&reader, &args));
+    g_assert_true(onc_rpc_xdr_reader_remaining(&reader) == sizeof(legacy));
+
+    memset(malformed + sizeof(legacy), 0, 4);
+    malformed[sizeof(legacy) - 1] = 0;
+    onc_rpc_xdr_reader_init(&reader, malformed, sizeof(malformed));
+    g_assert_false(ni_xdr_decode_bind_args(&reader, &args));
+    g_assert_true(onc_rpc_xdr_reader_remaining(&reader) == sizeof(malformed));
+    ni_bind_args_clear(&args);
+}
+
 static void test_root_result_golden(void)
 {
     static const uint8_t expected[] = {
@@ -1714,6 +1749,8 @@ int main(int argc, char **argv)
                     test_registration_ports_golden);
     g_test_add_func("/netinfo-xdr/golden/bind-arguments",
                     test_bind_arguments_golden);
+    g_test_add_func("/netinfo-xdr/golden/bind-arguments-openstep-trailing-word",
+                    test_bind_arguments_openstep_trailing_word);
     g_test_add_func("/netinfo-xdr/golden/root-result",
                     test_root_result_golden);
     g_test_add_func("/netinfo-xdr/golden/lookup-arguments",
