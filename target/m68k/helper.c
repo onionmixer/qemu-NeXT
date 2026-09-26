@@ -838,10 +838,16 @@ static int get_physical_address(CPUM68KState *env, hwaddr *physical,
         return -1;
     }
     if (M68K_PDT_INDIRECT(next)) {
-        next = address_space_ldl(cs->as, M68K_INDIRECT_POINTER(next),
-                                 MEMTXATTRS_UNSPECIFIED, &txres);
+        /* U/M bits belong to the resolved page descriptor, not the link. */
+        entry = M68K_INDIRECT_POINTER(next);
+        next = address_space_ldl(cs->as, entry, MEMTXATTRS_UNSPECIFIED,
+                                 &txres);
         if (txres != MEMTX_OK) {
             goto txfail;
+        }
+        if (!(next & 1)) {
+            /* An invalid or second indirect descriptor is not a page. */
+            return -1;
         }
     }
     if (access_type & ACCESS_STORE) {
@@ -897,6 +903,14 @@ static int get_physical_address(CPUM68KState *env, hwaddr *physical,
         if ((access_type & ACCESS_SUPER) == 0) {
             return -1;
         }
+    }
+
+    if (!(access_type & ACCESS_STORE) && !(next & M68K_DESC_MODIFIED)) {
+        /*
+         * A read can populate the QEMU TLB, but the first later write must
+         * still revisit the descriptor to set its 68040 Modified bit.
+         */
+        *prot &= ~PAGE_WRITE;
     }
 
     return 0;
