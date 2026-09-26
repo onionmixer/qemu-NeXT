@@ -261,5 +261,7 @@ bool scsi_generic_pr_state_preempt(SCSIDevice *s, Error **errp);
 #define SCSI_DISK_QUIRK_MODE_SENSE_ROM_USE_DBD             1
 #define SCSI_DISK_QUIRK_MODE_PAGE_VENDOR_SPECIFIC_APPLE    2
 #define SCSI_DISK_QUIRK_MODE_PAGE_TRUNCATED                3
+#define SCSI_DISK_QUIRK_MODE_PAGE_VENDOR_SPECIFIC_NEXT     4
+#define SCSI_DISK_QUIRK_MODE_PAGE_FORMAT_DEVICE_NEXT       5
 
 #endif
