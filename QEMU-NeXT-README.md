@@ -26,6 +26,9 @@
 > - NeXT SCSI DMA: empty-window and chained partial-beat boundaries, with
 >   qtest fixes ([#6](https://github.com/onionmixer/qemu-NeXT/pull/6),
 >   [#7](https://github.com/onionmixer/qemu-NeXT/pull/7)).
+> - NeXT SCSI qtests: wait for the selection interrupt before READ transfers,
+>   which made twelve read tests fail intermittently under parallel load
+>   ([#9](https://github.com/onionmixer/qemu-NeXT/pull/9)).
 >
 > Each change is also kept as a single commit on a `pr/*` branch based on
 > upstream commit `a697703`, ready for upstream submission. Everything below
