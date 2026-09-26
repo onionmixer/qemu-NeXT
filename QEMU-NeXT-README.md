@@ -1,5 +1,38 @@
 # QEMU NeXT hardware support
 
+> **About this fork.** `onionmixer/qemu-NeXT` is a fork of
+> [blanham/qemu-NeXT](https://github.com/blanham/qemu-NeXT). It exists only
+> because the upstream repository does not accept pull requests: its pull
+> request feature is disabled. The fixes below came out of installing and
+> booting OPENSTEP 4.2, and are kept here until they can be submitted
+> upstream. **If upstream starts accepting pull requests, these changes will
+> be submitted there, and this fork may then be archived or deleted.** Prefer
+> the upstream repository for anything else.
+>
+> Changes merged into this fork's `metachicken` branch:
+>
+> - NetInfo: accept the trailing zero word that OPENSTEP 4.2 sends in
+>   `NIBIND_BIND` ([#1](https://github.com/onionmixer/qemu-NeXT/pull/1)).
+> - 82077 floppy: use the 250 ms reset polling window
+>   ([#2](https://github.com/onionmixer/qemu-NeXT/pull/2)).
+> - NeXT floppy: report the media density selected by the FDC
+>   ([#3](https://github.com/onionmixer/qemu-NeXT/pull/3)).
+> - SCSI: opt-in NeXT MODE SENSE page 0 and page 3 responses, off by default
+>   ([#4](https://github.com/onionmixer/qemu-NeXT/pull/4)).
+> - MC68040 MMU: update the Modified bit through indirect page descriptors
+>   ([#5](https://github.com/onionmixer/qemu-NeXT/pull/5)). Checked with an
+>   integrated OPENSTEP 4.2 installation; there is no targeted MMU regression
+>   test yet.
+> - NeXT SCSI DMA: empty-window and chained partial-beat boundaries, with
+>   qtest fixes ([#6](https://github.com/onionmixer/qemu-NeXT/pull/6),
+>   [#7](https://github.com/onionmixer/qemu-NeXT/pull/7)).
+>
+> Each change is also kept as a single commit on a `pr/*` branch based on
+> upstream commit `a697703`, ready for upstream submission. Everything below
+> this note is the upstream README, unchanged: its first-person account is the
+> upstream author's, and its clone commands and images refer to the upstream
+> repository, which does not contain these fixes.
+
 ## Background
 
 I wrote the original NeXT Cube support for QEMU in 2011. Most of the hardware
