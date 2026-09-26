@@ -479,6 +479,16 @@ static void wait_for_scsi_command_completion(QTestState *qts)
             qtest_readl(qts, NEXT_DMA_CSR));
 }
 
+/*
+ * READ data arrives from the block layer's thread pool.  If it arrives after
+ * a TI command, the ESP takes that TI as the command phase and never starts
+ * the data transfer, so wait for the selection interrupt as a driver does.
+ */
+static void wait_for_selection(QTestState *qts)
+{
+    wait_for_scsi_command_completion(qts);
+}
+
 static QTestState *start_scsi_write_dma(TestDisk *disk,
                                         const uint8_t source[NEXT_SECTOR_SIZE])
 {
@@ -1041,6 +1051,7 @@ static void test_scsi_read_dma_chain(void)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_10[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
 
     qtest_writeb(qts, NEXT_ESP_TCLO, 0);
@@ -1135,6 +1146,7 @@ static void test_scsi_chained_tail_overflow(void)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_10[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
 
     qtest_writeb(qts, NEXT_ESP_TCLO, TRANSFER_LENGTH & 0xff);
@@ -1259,6 +1271,7 @@ static void test_scsi_read_dma_16_sector_three_segments(void)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_10[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
     qtest_writeb(qts, NEXT_ESP_TCLO, TRANSFER_LENGTH & 0xff);
     qtest_writeb(qts, NEXT_ESP_TCMID, TRANSFER_LENGTH >> 8);
@@ -1460,6 +1473,7 @@ static void test_scsi_read_dma_16_sector_two_refills(void)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_10[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
     qtest_writeb(qts, NEXT_ESP_TCLO, TRANSFER_LENGTH & 0xff);
     qtest_writeb(qts, NEXT_ESP_TCMID, TRANSFER_LENGTH >> 8);
@@ -1565,6 +1579,7 @@ static void test_scsi_read_dma_waits_for_complete_ack(void)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_10[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
     qtest_writeb(qts, NEXT_ESP_TCLO, TRANSFER_LENGTH & 0xff);
     qtest_writeb(qts, NEXT_ESP_TCMID, (TRANSFER_LENGTH >> 8) & 0xff);
@@ -1666,6 +1681,7 @@ static void test_scsi_read_dma_late_enable_resumes_pending_ti(void)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_10[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
     qtest_writeb(qts, NEXT_ESP_TCLO, TRANSFER_LENGTH & 0xff);
     qtest_writeb(qts, NEXT_ESP_TCMID, TRANSFER_LENGTH >> 8);
@@ -1764,6 +1780,7 @@ static void test_scsi_read_dma_rearm_after_complete_clear(void)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_10[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
     qtest_writeb(qts, NEXT_ESP_TCLO, TRANSFER_LENGTH & 0xff);
     qtest_writeb(qts, NEXT_ESP_TCMID, TRANSFER_LENGTH >> 8);
@@ -1859,6 +1876,7 @@ static void test_scsi_read_dma_complete_entry_gate(void)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_10[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
     qtest_writeb(qts, NEXT_ESP_TCLO, TRANSFER_LENGTH & 0xff);
     qtest_writeb(qts, NEXT_ESP_TCMID, TRANSFER_LENGTH >> 8);
@@ -2032,6 +2050,7 @@ static void test_scsi_read_dma_reset_rearms_pending_ti(void)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_10[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
     qtest_writeb(qts, NEXT_ESP_TCLO, TRANSFER_LENGTH & 0xff);
     qtest_writeb(qts, NEXT_ESP_TCMID, TRANSFER_LENGTH >> 8);
@@ -2843,6 +2862,7 @@ static void read_scsi_dma(QTestState *qts, uint8_t target,
         qtest_writeb(qts, NEXT_ESP_FIFO, cdb[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
     qtest_writeb(qts, NEXT_ESP_TCLO, transfer_len & 0xff);
     qtest_writeb(qts, NEXT_ESP_TCMID, (transfer_len >> 8) & 0xff);
@@ -3120,6 +3140,7 @@ static void read_cd_sector_1_dma_chain(QTestState *qts)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_10_cd_sector_1[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    wait_for_selection(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
     qtest_writeb(qts, NEXT_ESP_TCLO, NEXT_CD_SECTOR_SIZE & 0xff);
     qtest_writeb(qts, NEXT_ESP_TCMID, NEXT_CD_SECTOR_SIZE >> 8);
