@@ -1478,6 +1478,13 @@ static void test_migration_idle_all_channels(void)
         size_t i;
 
         qtest_memset(destination, init, 0xa5, sizeof(received));
+        /*
+         * The migrated LIMIT lies below NEXT_INIT.  Give the latched buffer
+         * a nonempty window that the transfer does not reach.
+         */
+        qtest_writel(destination,
+                     channel_address(&channels[0], 0x4004),
+                     init + 2 * TRANSFER_LENGTH);
         qtest_writel(destination, NEXT_DMA_BASE + channels[0].csr,
                      DMA_CLRCOMPLETE | DMA_SETENABLE | DMA_READ_CMD);
         issue_inquiry_dma(destination, TRANSFER_LENGTH);
