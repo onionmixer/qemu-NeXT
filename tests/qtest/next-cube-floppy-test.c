@@ -82,6 +82,7 @@
 #define NEXT_FLOPPY_SIZE       1474560
 #define NEXT_SECTOR_SIZE       512
 #define NEXT_ROM_RESET_HOLD_NS (250 * 1000)
+#define NEXT_RESET_POLL_WINDOW_NS (250 * 1000 * 1000)
 #define NEXT_DMA_BUFFER        0x04010000
 #define NEXT_POLL_LIMIT        10000
 #define NEXT_RESET_POLL_STEPS  256
@@ -467,7 +468,7 @@ static void test_rom_reset_configure_recalibrate(void)
     qts = next_cube_start(fixture, true);
 
     /*
-     * NeXT ROM fc_82077_reset(): CONFIGURE within 250 us suppresses the
+     * NeXT ROM fc_82077_reset(): CONFIGURE within 250 ms suppresses the
      * controller's reset polling interrupt before the ROM installs its
      * interrupt handler.
      */
@@ -510,7 +511,7 @@ static void test_dpoll_preserves_late_or_consumed_reset_results(void)
 
     qtest_writeb(qts, NEXT_FDC_DOR, 0x00);
     qtest_writeb(qts, NEXT_FDC_DOR, 0x04);
-    qtest_clock_step(qts, NEXT_ROM_RESET_HOLD_NS + 1);
+    qtest_clock_step(qts, NEXT_RESET_POLL_WINDOW_NS + 1);
     fdc_send_command(qts, configure, sizeof(configure));
     g_assert_cmphex(qtest_readl(qts, NEXT_INTR_STATUS) &
                     NEXT_FLOPPY_IRQ, ==, NEXT_FLOPPY_IRQ);
@@ -996,7 +997,7 @@ static void test_migrate_reset_poll_suppression_window(void)
     source = next_cube_start_migration(fixture, false);
     qtest_writeb(source, NEXT_FDC_DOR, 0x00);
     qtest_writeb(source, NEXT_FDC_DOR, 0x04);
-    qtest_clock_step(source, NEXT_ROM_RESET_HOLD_NS + 1);
+    qtest_clock_step(source, NEXT_RESET_POLL_WINDOW_NS + 1);
     fdc_send_command(source, configure, sizeof(configure));
     g_assert_cmphex(qtest_readl(source, NEXT_INTR_STATUS) &
                     NEXT_FLOPPY_IRQ, ==, NEXT_FLOPPY_IRQ);
