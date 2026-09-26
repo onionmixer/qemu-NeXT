@@ -1145,6 +1145,15 @@ static int mode_sense_page(SCSIDiskState *s, int page, uint8_t **p_outbuf,
     int length;
 
     assert(page < ARRAY_SIZE(mode_sense_valid));
+    if (page == MODE_PAGE_FORMAT_DEVICE && s->qdev.type == TYPE_DISK &&
+        (s->quirks & (1 << SCSI_DISK_QUIRK_MODE_PAGE_FORMAT_DEVICE_NEXT))) {
+        /*
+         * NeXT probes page 3 during disk setup.  Previous acknowledges this
+         * unimplemented page with GOOD and no page bytes, leaving only the
+         * mode header and optional block descriptor in the response.
+         */
+        return 0;
+    }
     if ((mode_sense_valid[page] & (1 << s->qdev.type)) == 0) {
         return -1;
     }
@@ -1302,6 +1311,15 @@ static int mode_sense_page(SCSIDiskState *s, int page, uint8_t **p_outbuf,
         }
 
     case MODE_PAGE_VENDOR_SPECIFIC:
+        if (s->qdev.type == TYPE_DISK && (s->quirks &
+            (1 << SCSI_DISK_QUIRK_MODE_PAGE_VENDOR_SPECIFIC_NEXT))) {
+            /* NeXT's operating page: page 0, length 2, usage bit set. */
+            length = 0x2;
+            if (page_control != 1) { /* Changeable Values are all zero. */
+                p[0] = 0x80;
+            }
+            break;
+        }
         if (s->qdev.type == TYPE_DISK && (s->quirks &
             (1 << SCSI_DISK_QUIRK_MODE_PAGE_VENDOR_SPECIFIC_APPLE))) {
             length = 0x2;
@@ -3240,6 +3258,12 @@ static const Property scsi_hd_properties[] = {
                       5),
     DEFINE_PROP_BIT("quirk_mode_page_vendor_specific_apple", SCSIDiskState,
                     quirks, SCSI_DISK_QUIRK_MODE_PAGE_VENDOR_SPECIFIC_APPLE,
+                    0),
+    DEFINE_PROP_BIT("quirk_mode_page_vendor_specific_next", SCSIDiskState,
+                    quirks, SCSI_DISK_QUIRK_MODE_PAGE_VENDOR_SPECIFIC_NEXT,
+                    0),
+    DEFINE_PROP_BIT("quirk_mode_page_format_device_next", SCSIDiskState,
+                    quirks, SCSI_DISK_QUIRK_MODE_PAGE_FORMAT_DEVICE_NEXT,
                     0),
     DEFINE_BLOCK_CHS_PROPERTIES(SCSIDiskState, qdev.conf),
 };

@@ -2834,6 +2834,67 @@ static void test_scsi_disk_and_cd_inquiry(void)
     cleanup_test_media(media);
 }
 
+static void test_scsi_next_mode_sense_operating_page(void)
+{
+    static const uint8_t test_unit_ready[6] = { 0 };
+    static const uint8_t mode_sense[6] = { 0x1a, 0, 0, 0, 16, 0 };
+    static const uint8_t operating_page[4] = { 0x00, 0x02, 0x80, 0x00 };
+    uint8_t response[16];
+    TestMedia *media = &test_media;
+    QTestState *qts = next_cube_scsi_media_start_with_args(
+        media, "-global scsi-hd.quirk_mode_page_vendor_specific_next=on");
+
+    g_assert_cmphex(submit_nodata_cdb(qts, 0, test_unit_ready), ==, 0x02);
+    g_assert_cmphex(submit_nodata_cdb(qts, 0, test_unit_ready), ==, 0x00);
+
+    qtest_memset(qts, NEXT_DMA_BUFFER, 0xcc, sizeof(response));
+    read_scsi_dma(qts, 0, mode_sense, sizeof(mode_sense),
+                  NEXT_DMA_BUFFER, sizeof(response));
+    qtest_memread(qts, NEXT_DMA_BUFFER, response, sizeof(response));
+    g_assert_cmphex(response[0], ==, 15);
+    g_assert_cmphex(response[3], ==, 8);
+    g_assert_cmphex(response[10], ==, 2);
+    g_assert_cmpmem(response + 12, sizeof(operating_page),
+                    operating_page, sizeof(operating_page));
+
+    qtest_quit(qts);
+    cleanup_test_media(media);
+}
+
+static void test_scsi_next_mode_sense_format_device_page(void)
+{
+    static const uint8_t test_unit_ready[6] = { 0 };
+    static const uint8_t mode_sense[6] = { 0x1a, 0, 0x03, 0, 36, 0 };
+    static const uint8_t mode_sense_dbd[6] = { 0x1a, 0x08, 0x03, 0, 36, 0 };
+    uint8_t response[16];
+    TestMedia *media = &test_media;
+    QTestState *qts = next_cube_scsi_media_start_with_args(
+        media, "-global scsi-hd.quirk_mode_page_format_device_next=on");
+
+    g_assert_cmphex(submit_nodata_cdb(qts, 0, test_unit_ready), ==, 0x02);
+    g_assert_cmphex(submit_nodata_cdb(qts, 0, test_unit_ready), ==, 0x00);
+
+    qtest_memset(qts, NEXT_DMA_BUFFER, 0xcc, sizeof(response));
+    read_scsi_dma(qts, 0, mode_sense, sizeof(mode_sense),
+                  NEXT_DMA_BUFFER, 12);
+    qtest_memread(qts, NEXT_DMA_BUFFER, response, sizeof(response));
+    g_assert_cmphex(response[0], ==, 11);
+    g_assert_cmphex(response[3], ==, 8);
+    g_assert_cmphex(response[9], ==, 0);
+    g_assert_cmphex(response[10], ==, 2);
+    g_assert_cmphex(response[11], ==, 0);
+
+    qtest_memset(qts, NEXT_DMA_BUFFER, 0xcc, sizeof(response));
+    read_scsi_dma(qts, 0, mode_sense_dbd, sizeof(mode_sense_dbd),
+                  NEXT_DMA_BUFFER, 4);
+    qtest_memread(qts, NEXT_DMA_BUFFER, response, sizeof(response));
+    g_assert_cmphex(response[0], ==, 3);
+    g_assert_cmphex(response[3], ==, 0);
+
+    qtest_quit(qts);
+    cleanup_test_media(media);
+}
+
 static void test_scsi_legacy_cdb_lun_inquiry(void)
 {
     static const uint8_t legacy_lun_inquiry[6] = {
@@ -3594,6 +3655,10 @@ int main(int argc, char **argv)
                    test_scsi_cdrom_command_line);
     qtest_add_func("/next-cube/scsi/disk-and-cd-inquiry",
                    test_scsi_disk_and_cd_inquiry);
+    qtest_add_func("/next-cube/scsi/next-mode-sense-operating-page",
+                   test_scsi_next_mode_sense_operating_page);
+    qtest_add_func("/next-cube/scsi/next-mode-sense-format-device-page",
+                   test_scsi_next_mode_sense_format_device_page);
     qtest_add_func("/next-cube/scsi/legacy-cdb-lun-inquiry",
                    test_scsi_legacy_cdb_lun_inquiry);
     qtest_add_func("/next-cube/scsi/no-atn-lun-resets-before-group1",
