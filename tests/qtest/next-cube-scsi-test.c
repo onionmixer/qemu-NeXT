@@ -605,6 +605,11 @@ static void test_scsi_write_dma(void)
     }
 
     qts = start_scsi_write_dma(disk, source);
+    /*
+     * The DMA side completes synchronously, but the disk write finishes in
+     * the block layer's thread pool before the ESP raises its interrupt.
+     */
+    wait_for_scsi_command_completion(qts);
     assert_scsi_dma_completed(qts);
 
     qtest_writel(qts, NEXT_DMA_CSR, DMA_RESET);
@@ -3204,6 +3209,11 @@ static void test_scsi_cd_label_partial_beat_after_chain(void)
         qtest_writeb(qts, NEXT_ESP_FIFO, read_four_sectors[i]);
     }
     qtest_writeb(qts, NEXT_ESP_CMD, ESP_CMD_SEL);
+    /*
+     * The CD read completes in the block layer's thread pool.  A TI issued
+     * before the selection interrupt would be taken as the command phase.
+     */
+    wait_for_scsi_command_completion(qts);
     qtest_readb(qts, NEXT_ESP_INTR);
     qtest_writeb(qts, NEXT_ESP_TCLO, LABEL_LENGTH & 0xff);
     qtest_writeb(qts, NEXT_ESP_TCMID, LABEL_LENGTH >> 8);
