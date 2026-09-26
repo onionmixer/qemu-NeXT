@@ -1741,14 +1741,28 @@ bool ni_xdr_decode_bind_args(OncRpcXdrReader *reader, NiBindArgs *args)
 {
     OncRpcXdrReader tmp;
     NiBindArgs value;
+    uint32_t legacy_trailing_word;
 
     if (!reader || !args) {
         return false;
     }
     ni_bind_args_init(&value);
     tmp = *reader;
-    if (!decode_bind_args_inner(&tmp, &value) ||
-        !onc_rpc_xdr_reader_empty(&tmp)) {
+    if (!decode_bind_args_inner(&tmp, &value)) {
+        ni_bind_args_clear(&value);
+        return false;
+    }
+    /*
+     * OPENSTEP 4.2 sends one zero word after NIBIND_BIND's three fields.
+     * Previous accepts it as well; keep the exception specific and bounded.
+     */
+    if (onc_rpc_xdr_reader_remaining(&tmp) == sizeof(legacy_trailing_word) &&
+        (!onc_rpc_xdr_u32(&tmp, &legacy_trailing_word) ||
+         legacy_trailing_word != 0)) {
+        ni_bind_args_clear(&value);
+        return false;
+    }
+    if (!onc_rpc_xdr_reader_empty(&tmp)) {
         ni_bind_args_clear(&value);
         return false;
     }

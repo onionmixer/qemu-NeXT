@@ -1021,6 +1021,21 @@ static void test_binder_silent_mismatch_and_malformed(void)
     }
     onc_rpc_request_unref(request);
 
+    /* OPENSTEP 4.2 emits one extra zero XDR word in its CALLIT BIND body. */
+    g_assert_cmpuint(body_length + 4, <=, sizeof(body));
+    memset(body + body_length, 0, 4);
+    request = request_new(71, NIBIND_PROG, NIBIND_VERS,
+                          NIBIND_BIND, body, body_length + 4, false);
+    g_assert_cmpint(dispatch_request(request, NIBIND_UDP_PORT), ==,
+                    ONC_RPC_DISPATCH_REPLIED);
+    {
+        OncRpcXdrReader reply;
+
+        reply_accepted_body(request, &reply);
+        g_assert_true(onc_rpc_xdr_reader_empty(&reply));
+    }
+    onc_rpc_request_unref(request);
+
     request = request_new(8, NIBIND_PROG, NIBIND_VERS,
                           NIBIND_GETREGISTER, body, 3, false);
     g_assert_cmpint(dispatch_request(request, NIBIND_UDP_PORT), ==,
