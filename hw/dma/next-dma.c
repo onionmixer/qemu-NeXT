@@ -1131,7 +1131,7 @@ out:
 
 static bool next_dma_scsi_beat_fits(const NextDMAChannelState *c)
 {
-    return c->limit <= c->next ||
+    return c->limit > c->next &&
            c->limit - c->next >= NEXT_DMA_SCSI_BEAT;
 }
 
@@ -1200,7 +1200,18 @@ int next_dma_scsi_write(NextDMAState *s, const uint8_t *buf, size_t len)
             /*
              * COMPLETE is an interrupt boundary.  The NeXT driver must
              * acknowledge it before the promoted continuation can run.
+             * The SCSI FIFO can still accept a partial final beat while
+             * that interrupt is pending.  In particular, the ROM reads a
+             * 7240-byte disk label using a 7232-byte first segment and an
+             * aligned continuation for the remaining eight bytes.
              */
+            if (remaining && remaining <= NEXT_DMA_SCSI_BEAT &&
+                next_dma_scsi_beat_fits(c)) {
+                memcpy(c->scsi_stage, buf, remaining);
+                c->scsi_stage_len = remaining;
+                c->scsi_stage_flushes = NEXT_DMA_SCSI_FLUSH_EDGES;
+                accepted += remaining;
+            }
             break;
         }
         if (!continue_segment && remaining) {
@@ -1256,9 +1267,10 @@ int next_dma_scsi_read(NextDMAState *s, uint8_t *buf, size_t len)
         size_t chunk = MIN(remaining, (size_t)NEXT_DMA_SCSI_BEAT);
         bool continue_segment;
 
-        if (c->limit > c->next) {
-            chunk = MIN(chunk, (size_t)(c->limit - c->next));
+        if (c->limit <= c->next) {
+            break;
         }
+        chunk = MIN(chunk, (size_t)(c->limit - c->next));
         if (!chunk) {
             break;
         }
