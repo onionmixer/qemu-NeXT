@@ -49,11 +49,7 @@
 #define NEXT_FLC_EJECT       0x80
 #define NEXT_FLC_82077_SEL   0x40
 #define NEXT_FLC_DRIVEID     0x04
-#define NEXT_FLC_MID_MASK    0x03
 #define NEXT_FLC_WRITABLE    (NEXT_FLC_EJECT | NEXT_FLC_82077_SEL)
-
-#define NEXT_FLOPPY_1MB_SIZE  737280
-#define NEXT_FLOPPY_2MB_SIZE 1474560
 
 struct NextFloppyCtrlState {
     SysBusDevice parent_obj;
@@ -64,28 +60,29 @@ struct NextFloppyCtrlState {
     uint8_t control;
 };
 
-static uint8_t next_floppy_media_id(int64_t size)
+static uint8_t next_floppy_media_id(FDriveRate rate)
 {
-    if (size <= NEXT_FLOPPY_1MB_SIZE) {
-        return 3 & NEXT_FLC_MID_MASK;
+    switch (rate) {
+    case FDRIVE_RATE_1M:
+        return 1;
+    case FDRIVE_RATE_500K:
+        return 2;
+    case FDRIVE_RATE_300K:
+    case FDRIVE_RATE_250K:
+        return 3;
     }
-    if (size <= NEXT_FLOPPY_2MB_SIZE) {
-        return 2 & NEXT_FLC_MID_MASK;
-    }
-    return 1 & NEXT_FLC_MID_MASK;
+    g_assert_not_reached();
 }
 
 static uint64_t next_floppy_read(void *opaque, hwaddr addr, unsigned size)
 {
     NextFloppyCtrlState *s = opaque;
     bool drive_present = false;
-    int64_t media_size = 0;
+    FDriveRate media_rate = FDRIVE_RATE_500K;
     uint8_t value = s->control;
 
-    if (!sysbus_fdc_get_media_info(s->fdc, 0, &drive_present, &media_size)) {
-        media_size = 0;
-    } else {
-        value |= next_floppy_media_id(media_size);
+    if (sysbus_fdc_get_media_rate(s->fdc, 0, &drive_present, &media_rate)) {
+        value |= next_floppy_media_id(media_rate);
     }
 
     if (!drive_present) {

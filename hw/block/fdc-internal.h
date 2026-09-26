@@ -40,13 +40,6 @@ typedef struct FloppyBus {
 
 /* Floppy disk drive emulation */
 
-typedef enum FDriveRate {
-    FDRIVE_RATE_500K = 0x00,  /* 500 Kbps */
-    FDRIVE_RATE_300K = 0x01,  /* 300 Kbps */
-    FDRIVE_RATE_250K = 0x02,  /* 250 Kbps */
-    FDRIVE_RATE_1M   = 0x03,  /*   1 Mbps */
-} FDriveRate;
-
 typedef enum FDriveSize {
     FDRIVE_SIZE_UNKNOWN,
     FDRIVE_SIZE_350,

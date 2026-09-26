@@ -142,35 +142,31 @@ DeviceState *fdctrl_init_sysbus_dma(qemu_irq irq, hwaddr mmio_base,
                                      dma_enable_active_low);
 }
 
-bool sysbus_fdc_get_media_info(DeviceState *dev, unsigned unit,
-                               bool *drive_present, int64_t *media_size)
+bool sysbus_fdc_get_media_rate(DeviceState *dev, unsigned unit,
+                               bool *drive_present, FDriveRate *media_rate)
 {
     FDCtrlSysBus *sys = SYSBUS_FDC(dev);
+    FDrive *drive;
     BlockBackend *blk;
-    int64_t size;
 
     *drive_present = false;
-    *media_size = 0;
+    *media_rate = FDRIVE_RATE_500K;
     if (unit >= MAX_FD) {
         return false;
     }
 
-    blk = sys->state.drives[unit].blk;
+    drive = &sys->state.drives[unit];
+    blk = drive->blk;
     if (!blk) {
         return false;
     }
 
     *drive_present = true;
-    if (!blk_is_inserted(blk)) {
+    if (!blk_is_inserted(blk) || !drive->media_validated) {
         return false;
     }
 
-    size = blk_getlength(blk);
-    if (size < 0) {
-        return false;
-    }
-
-    *media_size = size;
+    *media_rate = drive->media_rate;
     return true;
 }
 
