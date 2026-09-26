@@ -411,6 +411,26 @@ static void test_controller_and_media(void)
     qtest_quit(qts);
 }
 
+static void test_short_media_uses_fdc_fallback_density(void)
+{
+    TestFixture *fixture = fixture_new();
+    g_autofree char *quoted_rom_path = g_shell_quote(fixture->rom_path);
+    g_autofree char *quoted_floppy_path =
+        g_shell_quote(fixture->floppy_path);
+    QTestState *qts;
+
+    /* The OPENSTEP startup image is shorter than a full 2.88 MB disk. */
+    g_assert_cmpint(ftruncate(fixture->floppy_fd, 1339392), ==, 0);
+    qts = qtest_initf("-machine next-cube -bios %s "
+                      "-global sysbus-fdc.fallback=288 "
+                      "-drive if=floppy,format=raw,readonly=on,file=%s",
+                      quoted_rom_path, quoted_floppy_path);
+
+    /* MID must describe the format selected by the FDC, not file length. */
+    g_assert_cmphex(qtest_readb(qts, NEXT_FLOPPY_CONTROL), ==, 0x41);
+    qtest_quit(qts);
+}
+
 static void test_sra_write_protect_tracks_backend(void)
 {
     TestFixture *fixture = fixture_new();
@@ -1031,6 +1051,8 @@ int main(int argc, char **argv)
 
     qtest_add_func("/next-cube/floppy/controller-and-media",
                    test_controller_and_media);
+    qtest_add_func("/next-cube/floppy/short-media-fallback-density",
+                   test_short_media_uses_fdc_fallback_density);
     qtest_add_func("/next-cube/floppy/sra-write-protect-tracks-backend",
                    test_sra_write_protect_tracks_backend);
     qtest_add_func("/next-cube/floppy/rom-reset-configure-recalibrate",
